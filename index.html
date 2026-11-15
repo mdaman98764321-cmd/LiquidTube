@@ -82,8 +82,10 @@ const SK='<div class="sk"></div>'.repeat(3);
 const err=e=>`<div class="em"><p>${e.message=='KEY'?'অ্যাপের সেটআপ সম্পূর্ণ হয়নি: API Key যুক্ত নেই।':e.message=='quotaExceeded'?'আজকের লোডের সীমা শেষ। কাল আবার চেষ্টা করুন।':'লোড করা যায়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।'}</p><button class="pill" onclick="location.reload()">আবার চেষ্টা</button></div>`;
 async function api(ep,p){if(KEY[0]=='_')throw Error('KEY');const u=new URL('https://www.googleapis.com/youtube/v3/'+ep);u.search=new URLSearchParams({...p,key:KEY});const r=await fetch(u),d=await r.json();if(!r.ok)throw Error(d.error?.errors?.[0]?.reason||'net');return d}
 const P='snippet,statistics,contentDetails,status';
-const V=i=>{const v={id:i.id,t:i.snippet.title,ch:i.snippet.channelTitle,v:+i.statistics?.viewCount||0,sec:sec(i.contentDetails.duration),pub:i.snippet.publishedAt,emb:i.status?.embeddable!==false};M[v.id]=v;return v};
-const det=async ids=>ids.length?(await api('videos',{part:P,id:ids.join(',')})).items.map(V).filter(v=>v.emb):[];
+const V=i=>{const v={id:i.id,c:i.snippet.channelId,t:i.snippet.title,ch:i.snippet.channelTitle,v:+i.statistics?.viewCount||0,sec:sec(i.contentDetails.duration),pub:i.snippet.publishedAt,emb:i.status?.embeddable!==false};M[v.id]=v;return v};
+const sv=(k,v)=>{const l=LS('lt_cl',[]).filter(x=>x!=k);l.push(k);while(l.length>30)localStorage.removeItem(l.shift());SV('lt_cl',l);SV(k,v)};
+const addCh=a=>{const s=new Set(LS('lt_ch',[]));a.forEach(v=>v.c&&s.add(v.c));SV('lt_ch',[...s].slice(-200))};
+const det=async ids=>{if(!ids.length)return[];const r=(await api('videos',{part:P,id:ids.slice(0,50).join(',')})).items.map(V).filter(v=>v.emb);addCh(r);return r};
 const card=v=>`<article class="cd" data-id="${v.id}"><div class="th"><img loading="lazy" src="https://i.ytimg.com/vi/${v.id}/hqdefault.jpg" alt=""><b>${dur(v.sec)}</b></div><div class="mt"><i class="av">${esc([...v.ch][0]||'?')}</i><div><h3>${esc(v.t)}</h3><p>${esc(v.ch)} • ${nf(v.v)} ভিউ • ${ago(v.pub)}</p></div></div></article>`;
 async function fill(b,fn,reset){if(b._k)return;b._k=1;b._fn=fn;if(reset){b._t='';b.innerHTML=SK}
 try{const r=await fn(b._t);b._t=r.next;if(reset)b.innerHTML='';b.insertAdjacentHTML('beforeend',r.items.map(card).join(''));if(!b.children.length)b.innerHTML='<p class="em">কিছু পাওয়া যায়নি</p>'}
@@ -95,7 +97,7 @@ const CATS=[['সব',''],['গান',10],['গেমিং',20],['বিনো
 let cat='',reg='BD';const rnd=a=>a[Math.random()*a.length|0];
 const homeFn=async t=>{const p={part:P,chart:'mostPopular',maxResults:25,regionCode:reg};if(cat)p.videoCategoryId=cat;if(t)p.pageToken=t;
 let d;try{d=await api('videos',p)}catch(e){if(reg!='US'){reg='US';return homeFn(t)}throw e}
-const it=d.items.map(V).filter(v=>v.emb&&v.sec>60);if(!t)it.sort(()=>Math.random()-.5);return{items:it,next:d.nextPageToken}};
+const it=d.items.map(V).filter(v=>v.emb&&v.sec>60);addCh(it);if(!t)it.sort(()=>Math.random()-.5);return{items:it,next:d.nextPageToken}};
 $('#ch').innerHTML=CATS.map(([n,c],i)=>`<button data-c="${c}" class="${i?'':'on'}">${n}</button>`).join('');
 $('#ch').onclick=e=>{const b=e.target.closest('button');if(!b)return;$$('#ch button').forEach(x=>x.classList.toggle('on',x==b));cat=b.dataset.c;reg=rnd(['BD','BD','IN','US']);$('#hs').scrollTop=0;fill($('#fd'),homeFn,1)};
 const hs=$('#hs'),ptr=$('#ptr');let y0=null;
@@ -103,20 +105,29 @@ hs.addEventListener('touchstart',e=>{y0=hs.scrollTop<=0?e.touches[0].clientY:nul
 hs.addEventListener('touchmove',e=>{if(y0==null)return;const d=e.touches[0].clientY-y0;if(d>0){ptr.style.transition='none';ptr.style.height=Math.min(d/2.2,64)+'px';ptr.textContent=d>150?'ছেড়ে দিন':'↓ টেনে রিফ্রেশ করুন';ptr.dataset.go=d>150?1:''}},{passive:true});
 hs.addEventListener('touchend',async()=>{if(y0==null)return;y0=null;ptr.style.transition='';if(ptr.dataset.go){ptr.dataset.go='';ptr.style.height='44px';ptr.textContent='নতুন ভিডিও আনা হচ্ছে…';reg=rnd(['BD','BD','IN','US','GB']);await fill($('#fd'),homeFn,1)}ptr.style.height='0'});
 /* সার্চ */
-const srFn=q=>async t=>{const p={part:'snippet',type:'video',maxResults:20,q,videoEmbeddable:'true',regionCode:'BD'};if(t)p.pageToken=t;const d=await api('search',p);return{items:await det(d.items.map(i=>i.id.videoId)),next:d.nextPageToken}};
+const srFn=q=>async()=>{const k='lt_c_'+q.toLowerCase(),c=LS(k,null);let ids;
+if(c&&Date.now()-c.t<432e5)ids=c.ids;else{try{const d=await api('search',{part:'snippet',type:'video',maxResults:30,q,videoEmbeddable:'true',regionCode:'BD'});ids=d.items.map(i=>i.id.videoId);sv(k,{t:Date.now(),ids})}catch(e){if(c)ids=c.ids;else throw e}}
+return{items:await det(ids),next:''}};
 const rcs=()=>{$('#rc').innerHTML=LS('lt_s',[]).map(s=>`<button>${esc(s)}</button>`).join('')};rcs();
 function search(q){q=q.trim();if(!q)return;$('#q').value=q;$('#q').blur();SV('lt_s',[q,...LS('lt_s',[]).filter(x=>x!=q)].slice(0,8));rcs();fill($('#sf'),srFn(q),1)}
 $('#q').onkeydown=e=>{if(e.key=='Enter')search(e.target.value)};
 $('#rc').onclick=e=>{if(e.target.tagName=='BUTTON')search(e.target.textContent)};
 /* শর্টস */
-const SQ=['#shorts','funny #shorts','music #shorts','বাংলা #shorts','cricket #shorts','gaming #shorts','cooking #shorts','travel #shorts','comedy #shorts','tech #shorts'];
 const HEART='<svg width="26" height="26" viewBox="0 0 24 24"><path d="M12 21s-8-5.3-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.7-8 11-8 11z"/></svg>';
 const emb=(id,o='')=>`https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0&enablejsapi=1&origin=${location.origin}${o}`;
-let shT='',shB=0,shQ='',shInit=0;
+let shT='',shB=0,shInit=0;const shSeen=new Set(),shUsed=new Set();
 const shCard=v=>`<section class="s" style="background-image:url(https://i.ytimg.com/vi/${v.id}/hqdefault.jpg)" data-v="${v.id}"><div class="ov"></div><div class="inf"><b>@${esc(v.ch)}</b><p>${esc(v.t)}</p></div><button class="fv" data-f="${v.id}">${HEART}</button></section>`;
 async function shMore(){if(shB)return;shB=1;const box=$('#sh');
-try{const p={part:'snippet',type:'video',videoDuration:'short',maxResults:25,videoEmbeddable:'true',q:shQ};if(shT)p.pageToken=shT;const d=await api('search',p);shT=d.nextPageToken||'';
-const it=(await det(d.items.map(i=>i.id.videoId))).filter(v=>v.sec<=61);if(!shInit)box.innerHTML='';shInit=1;box.insertAdjacentHTML('beforeend',it.map(shCard).join(''));
+try{let it=[],le=null;
+for(let n=0;n<3&&it.length<6;n++){let pool=LS('lt_ch',[]);
+if(pool.length<8){const d=await api('videos',{part:'snippet',chart:'mostPopular',maxResults:50,regionCode:rnd(['BD','IN','US'])});addCh(d.items.map(i=>({c:i.snippet.channelId})));pool=LS('lt_ch',[])}
+let fr=pool.filter(c=>!shUsed.has(c));if(fr.length<6){shUsed.clear();fr=pool}
+const pk=fr.sort(()=>Math.random()-.5).slice(0,8);pk.forEach(c=>shUsed.add(c));
+const rs=await Promise.all(pk.map(c=>api('playlistItems',{part:'contentDetails',playlistId:'UUSH'+c.slice(2),maxResults:8}).then(d=>d.items.map(i=>i.contentDetails.videoId)).catch(e=>{le=e;return[]})));
+const ids=[...new Set(rs.flat())].filter(x=>!shSeen.has(x)).sort(()=>Math.random()-.5).slice(0,50);
+const vs=(await det(ids)).filter(v=>v.sec<=180);vs.forEach(v=>shSeen.add(v.id));it=it.concat(vs)}
+if(!it.length&&le)throw le;
+shT=1;if(!shInit)box.innerHTML='';shInit=1;box.insertAdjacentHTML('beforeend',it.map(shCard).join(''));
 $$('#sh .s:not([data-o])').forEach(e=>{e.dataset.o=1;io.observe(e)});mark()}
 catch(e){if(!shInit)box.innerHTML=err(e)}shB=0}
 const act=s=>{$$('#sh iframe').forEach(f=>f.remove());s._p=0;s.insertAdjacentHTML('afterbegin',`<iframe src="${emb(s.dataset.v,`&controls=0&loop=1&playlist=${s.dataset.v}&modestbranding=1`)}" allow="autoplay;encrypted-media;picture-in-picture" referrerpolicy="strict-origin-when-cross-origin"></iframe>`);hist(M[s.dataset.v])};
@@ -138,7 +149,7 @@ let lt='lt_h';function lib(){const a=LS(lt,[]);a.forEach(v=>M[v.id]=v);$('#ll').
 $('.seg').onclick=e=>{const b=e.target.closest('button');if(!b)return;lt=b.dataset.t;$$('.seg button').forEach(x=>x.classList.toggle('on',x==b));lib()};
 /* নেভিগেশন */
 function go(n){$$('.v').forEach(e=>e.classList.toggle('on',e.id==n));$$('nav button').forEach(b=>b.classList.toggle('on',b.dataset.n==n));$$('#sh iframe').forEach(f=>f.remove());
-if(n=='sh'&&!shInit&&!shB){$('#sh').innerHTML=SK;shQ=rnd(SQ);shMore()}if(n=='lb')lib()}
+if(n=='sh'&&!shInit&&!shB){$('#sh').innerHTML=SK;shMore()}if(n=='lb')lib()}
 $$('nav button').forEach(b=>b.onclick=()=>go(b.dataset.n));
 fill($('#fd'),homeFn,1);
 </script></body></html>
