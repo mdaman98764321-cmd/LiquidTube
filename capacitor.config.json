@@ -1,5 +1,7 @@
 {
   "appId": "com.liquidtube.app",
   "appName": "LiquidTube",
-  "webDir": "www"
+  "webDir": "www",
+  "backgroundColor": "#0b0b12",
+  "android": { "backgroundColor": "#0b0b12" }
 }

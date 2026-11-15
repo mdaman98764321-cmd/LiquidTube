@@ -1,1000 +1,144 @@
-<!DOCTYPE html>
-<html lang="bn">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LiquidTube Pro - Universal Stream & Offline Hub</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --accent: #ef4444;
-            --accent-glow: rgba(239, 68, 68, 0.45);
-            --bg-base: #060913;
-            --glass-bg: rgba(17, 25, 40, 0.65);
-            --glass-border: rgba(255, 255, 255, 0.12);
-            --blur-val: 16px;
-        }
-
-        [data-theme="amoled"] {
-            --accent: #f43f5e;
-            --accent-glow: rgba(244, 63, 94, 0.4);
-            --bg-base: #000000;
-            --glass-bg: rgba(12, 12, 14, 0.85);
-            --glass-border: rgba(255, 255, 255, 0.08);
-        }
-
-        [data-theme="cyberpunk"] {
-            --accent: #a855f7;
-            --accent-glow: rgba(168, 85, 247, 0.5);
-            --bg-base: #090414;
-            --glass-bg: rgba(28, 16, 48, 0.65);
-            --glass-border: rgba(192, 132, 252, 0.22);
-        }
-
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body {
-            background-color: var(--bg-base);
-            color: #f8fafc;
-            font-family: 'Poppins', 'Hind Siliguri', sans-serif;
-            overflow-x: hidden;
-            margin: 0;
-            padding-bottom: 110px;
-            transition: background-color 0.4s ease;
-        }
-
-        .fluid-bg {
-            position: fixed;
-            inset: 0;
-            z-index: -1;
-            overflow: hidden;
-            pointer-events: none;
-        }
-        .orb {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(80px);
-            opacity: 0.35;
-            animation: floatOrb 14s infinite alternate ease-in-out;
-        }
-        .orb-1 { width: 320px; height: 320px; background: var(--accent); top: -80px; left: -60px; }
-        .orb-2 { width: 280px; height: 280px; background: #3b82f6; bottom: 10%; right: -50px; animation-delay: -5s; }
-
-        @keyframes floatOrb {
-            0% { transform: translate(0, 0) scale(1); }
-            100% { transform: translate(35px, 45px) scale(1.15); }
-        }
-
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(var(--blur-val));
-            -webkit-backdrop-filter: blur(var(--blur-val));
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
-        }
-
-        .liquid-nav-wrapper {
-            position: fixed;
-            bottom: 16px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: calc(100% - 28px);
-            max-width: 480px;
-            height: 68px;
-            border-radius: 34px;
-            z-index: 40;
-            overflow: hidden;
-            background: rgba(15, 23, 42, 0.72);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.25);
-        }
-
-        #liquidNavCanvas {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        .nav-items {
-            position: relative;
-            z-index: 2;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            height: 100%;
-            align-items: center;
-        }
-
-        .nav-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: #94a3b8;
-            font-size: 11px;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            cursor: pointer;
-            height: 100%;
-        }
-
-        .nav-btn.active {
-            color: #ffffff;
-            transform: translateY(-2px) scale(1.06);
-            text-shadow: 0 0 12px var(--accent-glow);
-        }
-
-        .nav-btn svg {
-            width: 22px;
-            height: 22px;
-            margin-bottom: 3px;
-            transition: transform 0.3s ease;
-        }
-
-        .ambient-player-box {
-            box-shadow: 0 0 45px var(--accent-glow);
-            transition: box-shadow 0.5s ease;
-        }
-
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
-</head>
-<body data-theme="default">
-
-    <div class="fluid-bg">
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-    </div>
-
-    <header class="sticky top-0 z-30 glass-panel border-b border-white/10 px-4 py-3">
-        <div class="max-w-3xl mx-auto flex items-center justify-between gap-3">
-            <div onclick="switchTab('home')" class="flex items-center gap-2 cursor-pointer flex-shrink-0">
-                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold shadow-lg" style="background: var(--accent);">
-                    ▶
-                </div>
-                <span class="font-bold text-lg tracking-tight hidden sm:inline">Liquid<span style="color: var(--accent);">Stream</span></span>
-            </div>
-
-            <div class="flex-grow flex items-center bg-white/5 border border-white/10 rounded-full px-3 py-1.5 focus-within:border-white/30 transition">
-                <input type="text" id="searchInput" onkeypress="if(event.key==='Enter') handleSearch()" 
-                    placeholder="যেকোনো চ্যানেল বা ভিডিও সার্চ করুন..." 
-                    class="bg-transparent w-full text-sm text-white placeholder-slate-400 focus:outline-none">
-                <button onclick="handleSearch()" class="text-slate-300 hover:text-white pl-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                </button>
-            </div>
-
-            <div class="flex items-center gap-2 flex-shrink-0">
-                <button id="headerGyroBtn" onclick="toggleGyro()" title="Gyro Liquid Physics On/Off"
-                    class="px-2.5 py-1.5 rounded-full text-xs font-semibold border border-white/15 flex items-center gap-1.5 transition bg-emerald-500/20 text-emerald-300">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" id="gyroDot"></span>
-                    <span id="gyroStatusText">Gyro ON</span>
-                </button>
-                <button onclick="openSettings()" class="p-2 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 transition">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                </button>
-            </div>
-        </div>
-
-        <div id="categoryChips" class="max-w-3xl mx-auto flex gap-2 overflow-x-auto no-scrollbar pt-3 pb-1">
-            <button onclick="filterCategory('All', this)" class="chip-btn active px-3.5 py-1 rounded-full text-xs font-semibold bg-white text-slate-900 flex-shrink-0">All</button>
-            <button onclick="filterCategory('Animation', this)" class="chip-btn px-3.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-slate-200 hover:bg-white/20 flex-shrink-0">Animation</button>
-            <button onclick="filterCategory('Movie Explain', this)" class="chip-btn px-3.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-slate-200 hover:bg-white/20 flex-shrink-0">Movie Explain</button>
-            <button onclick="filterCategory('Anime', this)" class="chip-btn px-3.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-slate-200 hover:bg-white/20 flex-shrink-0">Anime</button>
-            <button onclick="filterCategory('Music', this)" class="chip-btn px-3.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-slate-200 hover:bg-white/20 flex-shrink-0">Music</button>
-        </div>
-    </header>
-
-    <main class="max-w-3xl mx-auto px-4 pt-5">
-        <div class="flex items-center justify-between mb-4">
-            <h2 id="feedHeading" class="text-base font-bold text-slate-100">সাজেস্টেড ও ট্রেন্ডিং ভিডিও</h2>
-            <span id="storageBadge" class="hidden text-xs px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                Internal Storage: 0 MB Used
-            </span>
-        </div>
-        <div id="mainFeed" class="space-y-4"></div>
-    </main>
-
-    <div id="watchModal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl hidden overflow-y-auto">
-        <div class="max-w-3xl mx-auto pb-24">
-            <div class="flex items-center justify-between px-4 py-3 border-b border-white/10 sticky top-0 bg-slate-950/80 backdrop-blur-md z-20">
-                <button onclick="minimizeToMiniPlayer()" class="flex items-center gap-1.5 text-xs font-semibold bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                    মিনি প্লেয়ার
-                </button>
-                <span class="text-xs text-slate-400 font-medium" id="sleepTimerDisplay"></span>
-                <button onclick="closeWatchModal()" class="w-8 h-8 rounded-full bg-red-600/80 hover:bg-red-600 text-white font-bold flex items-center justify-center">✕</button>
-            </div>
-
-            <div class="relative w-full bg-black ambient-player-box" style="padding-top: 56.25%;">
-                <iframe id="mainPlayerIframe" class="absolute inset-0 w-full h-full" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                
-                <div id="audioOnlyOverlay" class="hidden absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center p-6 text-center z-10">
-                    <div class="w-20 h-20 rounded-full flex items-center justify-center text-3xl mb-3 animate-pulse" style="background: var(--accent);">🎧</div>
-                    <p class="font-bold text-base">Audio-Only / Podcast Mode চালু আছে</p>
-                    <p class="text-xs text-slate-400 mt-1">ইন্টারনেট ডেটা সাশ্রয় হচ্ছে। ভিডিও দেখতে নিচের বাটনে চাপুন।</p>
-                    <button onclick="toggleAudioOnly()" class="mt-4 px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-900">ভিডিও মোডে ফিরুন</button>
-                </div>
-            </div>
-
-            <div class="p-4 space-y-4">
-                <div>
-                    <h1 id="watchTitle" class="text-lg font-bold leading-snug"></h1>
-                    <div class="flex items-center justify-between mt-2 text-xs text-slate-400">
-                        <span id="watchChannel" class="font-semibold text-slate-200"></span>
-                        <span id="watchViews"></span>
-                    </div>
-                </div>
-
-                <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                    <button onclick="toggleLike()" id="likeBtn" class="glass-panel px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 flex-shrink-0 hover:bg-white/10">
-                        👍 <span id="likeCount">0</span>
-                    </button>
-                    <button onclick="startStorageDownload()" id="downloadBtn" class="glass-panel px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1.5 flex-shrink-0 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20">
-                        📥 <span id="downloadBtnText">ডাউনলোড (Phone Storage)</span>
-                    </button>
-                    <button onclick="toggleAudioOnly()" class="glass-panel px-3.5 py-2 rounded-full text-xs font-semibold flex-shrink-0 hover:bg-white/10">
-                        🎧 Audio Mode
-                    </button>
-                    <button onclick="cycleSpeed()" id="speedBtn" class="glass-panel px-3.5 py-2 rounded-full text-xs font-semibold flex-shrink-0 hover:bg-white/10">
-                        ⚡ Speed: 1x
-                    </button>
-                    <button onclick="setSleepTimer()" class="glass-panel px-3.5 py-2 rounded-full text-xs font-semibold flex-shrink-0 hover:bg-white/10">
-                        ⏰ Sleep Timer
-                    </button>
-                </div>
-
-                <div id="downloadProgressBox" class="hidden glass-panel p-3 rounded-xl space-y-1.5">
-                    <div class="flex justify-between text-xs font-semibold">
-                        <span class="text-emerald-400" id="dlStatusLabel">ফোন স্টোরেজে ডাউনলোড হচ্ছে...</span>
-                        <span id="dlPercent">0%</span>
-                    </div>
-                    <div class="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                        <div id="dlBar" class="h-full bg-emerald-500 transition-all duration-200" style="width: 0%;"></div>
-                    </div>
-                    <div class="flex justify-end gap-2 pt-1">
-                        <button onclick="pauseResumeDownload()" id="pauseDlBtn" class="text-[11px] px-2.5 py-1 rounded bg-white/10 hover:bg-white/20">Pause</button>
-                        <button onclick="cancelDownload()" class="text-[11px] px-2.5 py-1 rounded bg-red-500/20 text-red-300">Cancel</button>
-                    </div>
-                </div>
-
-                <div class="glass-panel p-3 rounded-xl">
-                    <p class="text-xs font-bold text-slate-300 mb-2">📑 ভিডিও চ্যাপ্টার (Chapters)</p>
-                    <div class="flex gap-2 overflow-x-auto no-scrollbar text-xs">
-                        <span class="px-2.5 py-1 rounded-lg bg-white/10 flex-shrink-0">00:00 সূচনা</span>
-                        <span class="px-2.5 py-1 rounded-lg bg-white/10 flex-shrink-0">03:45 মূল কাহিনী শুরু</span>
-                        <span class="px-2.5 py-1 rounded-lg bg-white/10 flex-shrink-0">11:20 ক্লাইম্যাক্স</span>
-                        <span class="px-2.5 py-1 rounded-lg bg-white/10 flex-shrink-0">18:10 সমাপ্তি</span>
-                    </div>
-                </div>
-
-                <div class="glass-panel p-4 rounded-2xl space-y-3">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-sm font-bold">কমেন্টস (<span id="commentCount">0</span>)</h3>
-                    </div>
-                    <div class="flex gap-2">
-                        <input type="text" id="newCommentInput" placeholder="আপনার মতামত লিখুন..." class="flex-grow bg-white/5 border border-white/10 rounded-full px-3.5 py-1.5 text-xs focus:outline-none">
-                        <button onclick="postComment()" class="px-4 py-1.5 rounded-full text-xs font-bold text-white" style="background: var(--accent);">পোস্ট</button>
-                    </div>
-                    <div id="commentsList" class="space-y-3 max-h-56 overflow-y-auto pr-1"></div>
-                </div>
-
-                <div class="pt-2">
-                    <h3 class="text-sm font-bold mb-3">পরবর্তী সাজেস্টেড ভিডিও</h3>
-                    <div id="suggestedList" class="space-y-3"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="miniPlayer" class="hidden fixed bottom-24 left-4 right-4 max-w-md mx-auto z-40 glass-panel rounded-2xl p-2.5 flex items-center justify-between gap-3 border border-white/20 shadow-2xl">
-        <div onclick="restoreFromMiniPlayer()" class="flex items-center gap-3 cursor-pointer flex-grow overflow-hidden">
-            <img id="miniThumb" src="" class="w-14 h-10 rounded-lg object-cover flex-shrink-0">
-            <div class="overflow-hidden">
-                <p id="miniTitle" class="text-xs font-bold truncate"></p>
-                <p class="text-[10px] text-emerald-400">চলছে • ট্যাপ করে বড় করুন</p>
-            </div>
-        </div>
-        <button onclick="closeMiniPlayer()" class="w-7 h-7 rounded-full bg-white/10 hover:bg-red-500/80 flex items-center justify-center text-xs font-bold flex-shrink-0">✕</button>
-    </div>
-
-    <div id="settingsModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
-        <div class="glass-panel w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl p-5 space-y-5">
-            <div class="flex justify-between items-center border-b border-white/10 pb-3">
-                <h3 class="font-bold text-base">অ্যাপ সেটিংস ও লিকুইড থিম</h3>
-                <button onclick="closeSettings()" class="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs">✕</button>
-            </div>
-
-            <section class="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-3">
-                <div>
-                    <p class="text-sm font-bold">YouTube API সংযোগ</p>
-                    <p class="text-xs text-slate-400 mt-1">নিজের YouTube Data API v3 Key এখানে দিন। Key এই ডিভাইসের ব্রাউজারেই সেভ হবে; GitHub কোডে যোগ হবে না।</p>
-                </div>
-                <div class="flex gap-2">
-                    <input id="youtubeApiKeyInput" type="password" autocomplete="off" placeholder="YouTube API Key" class="min-w-0 flex-1 rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-400">
-                    <button type="button" onclick="toggleApiKeyVisibility()" id="apiKeyEyeBtn" class="rounded-xl bg-white/10 px-3 text-xs">দেখুন</button>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <button type="button" onclick="saveYouTubeApiKey()" class="rounded-xl bg-red-500 px-3 py-2 text-xs font-bold text-white">Key সেভ করুন</button>
-                    <button type="button" onclick="testYouTubeApiKey()" class="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold">API পরীক্ষা</button>
-                </div>
-                <p id="apiKeyStatus" class="text-xs text-slate-400" aria-live="polite">এখনো API Key যোগ করা হয়নি।</p>
-                <button type="button" onclick="removeYouTubeApiKey()" class="text-xs text-red-300 underline">এই ডিভাইস থেকে Key মুছুন</button>
-                <p class="text-[11px] leading-relaxed text-amber-200/80">নিরাপত্তা: Google Cloud-এ API Key-টি শুধু YouTube Data API v3-তে সীমাবদ্ধ করুন এবং GitHub Pages-এর ওয়েবসাইট ডোমেইন দিয়ে HTTP referrer restriction দিন। পাবলিক ওয়েবসাইটে ব্রাউজার থেকে ব্যবহৃত Key সম্পূর্ণ গোপন রাখা যায় না।</p>
-            </section>
-
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-bold">Gyroscope Liquid Physics</p>
-                    <p class="text-xs text-slate-400">ফোন কাত করলে নিচের বারের পানি হেলে পড়বে</p>
-                </div>
-                <button id="modalGyroBtn" onclick="toggleGyro()" class="px-4 py-1.5 rounded-full text-xs font-bold bg-emerald-500 text-slate-950">ON</button>
-            </div>
-
-            <div class="space-y-2">
-                <p class="text-sm font-bold">গ্লাসমরফিজম কালার থিম</p>
-                <div class="grid grid-cols-3 gap-2 text-xs font-semibold">
-                    <button onclick="setTheme('default')" class="p-2.5 rounded-xl border border-white/20 bg-red-500/20 text-center">Crimson Glass</button>
-                    <button onclick="setTheme('amoled')" class="p-2.5 rounded-xl border border-white/20 bg-black text-center">AMOLED Black</button>
-                    <button onclick="setTheme('cyberpunk')" class="p-2.5 rounded-xl border border-white/20 bg-purple-600/20 text-center">Cyberpunk Neon</button>
-                </div>
-            </div>
-
-            <div class="space-y-1">
-                <div class="flex justify-between text-xs">
-                    <span class="font-bold">Glass Blur Intensity</span>
-                    <span id="blurValText">16px</span>
-                </div>
-                <input type="range" min="4" max="32" value="16" oninput="updateBlur(this.value)" class="w-full accent-red-500">
-            </div>
-        </div>
-    </div>
-
-    <nav class="liquid-nav-wrapper">
-        <canvas id="liquidNavCanvas"></canvas>
-        <div class="nav-items">
-            <div onclick="switchTab('home')" id="tab-home" class="nav-btn active">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                <span>Home</span>
-            </div>
-            <div onclick="switchTab('short')" id="tab-short" class="nav-btn">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                <span>Short</span>
-            </div>
-            <div onclick="switchTab('library')" id="tab-library" class="nav-btn">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
-                <span>Library</span>
-            </div>
-            <div onclick="switchTab('music')" id="tab-music" class="nav-btn">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
-                <span>Music</span>
-            </div>
-        </div>
-    </nav>
-
-    <script>
-        const catalog = [
-            {
-                id: "1Vnu74OqCfE",
-                title: "২০২৬ সালের সেরা ডায়নোসর সিনেমা !! Movie Explained In Bangla",
-                channel: "Random Animation",
-                views: "59K views • 6 days ago",
-                category: "Movie Explain",
-                type: "video",
-                sizeMB: 145,
-                likes: 1576,
-                comments: [
-                    { user: "Tanvir Ahmed", text: "ভাই অসাধারণ এক্সপ্লেইন ছিল! পরের পর্ব তাড়াতাড়ি চাই।" },
-                    { user: "Nusrat Jahan", text: "মুভিটা সত্যিই অনেক সুন্দর ছিল।" }
-                ]
-            },
-            {
-                id: "goU2ZzSzkHE",
-                title: "ম্যাজিক স্কুলের সবচেয়ে রহস্যময় ছাত্রের গল্প !! Movie Explain In Bangla",
-                channel: "Random Animation",
-                views: "307K views • 3 months ago",
-                category: "Animation",
-                type: "video",
-                sizeMB: 210,
-                likes: 5688,
-                comments: [
-                    { user: "Sajib Hasan", text: "এই অ্যানিমেটার নাম কী ভাই?" },
-                    { user: "Fardin Khan", text: "সেরা একটি গল্প!" }
-                ]
-            },
-            {
-                id: "cq3fcR1sZnw",
-                title: "৮২০ বছর পর তাকে কফিন থেকে জাগিয়ে তোলা হয় !! Movie Explain In Bangla",
-                channel: "Random Animation",
-                views: "185K views • 6 months ago",
-                category: "Anime",
-                type: "video",
-                sizeMB: 260,
-                likes: 5495,
-                comments: [
-                    { user: "Rafiul Islam", text: "অস্থির ভয়েস ওভার ভাই।" }
-                ]
-            },
-            {
-                id: "wmI04gFbouU",
-                title: "ওয়ান পিস পর্ব ০১ - ০২ - ০৩ Explain In Bangla | One Piece",
-                channel: "Random Animation",
-                views: "144K views • 1 year ago",
-                category: "Anime",
-                type: "video",
-                sizeMB: 98,
-                likes: 7481,
-                comments: [
-                    { user: "Luffy Fan", text: "ওয়ান পিস মানেই ভালোবাসা!" }
-                ]
-            },
-            {
-                id: "ZDn5EoURHtY",
-                title: "BLACKPINK লিসার ঘরেই যখন আপনার জন্ম হয় | Oshi No Ko",
-                channel: "Random Animation",
-                views: "376K views • 1 year ago",
-                category: "Animation",
-                type: "video",
-                sizeMB: 84,
-                likes: 11734,
-                comments: [
-                    { user: "Mahiya", text: "Oshi No Ko বেস্ট অ্যানিমে!" }
-                ]
-            },
-            {
-                id: "8IHpfhK9WqM",
-                title: "BEST MANIPULATOR IN THIS ANIME #shorts #anime",
-                channel: "Anime with edits",
-                views: "23K views",
-                category: "Anime",
-                type: "short",
-                sizeMB: 18,
-                likes: 840,
-                comments: [{ user: "EditzPro", text: "Fire edit!" }]
-            },
-            {
-                id: "RDNtf8_Wcgc",
-                title: "Itachi hiding his pain in rain 💔 #itachi #naruto #shorts",
-                channel: "ANI X ME",
-                views: "99K views",
-                category: "Anime",
-                type: "short",
-                sizeMB: 15,
-                likes: 4080,
-                comments: [{ user: "Uchiha", text: "Legend Itachi!" }]
-            },
-            {
-                id: "jfKfPfyJRdk",
-                title: "lofi hip hop radio 📚 - beats to relax/study to",
-                channel: "Lofi Girl",
-                views: "65K watching",
-                category: "Music",
-                type: "music",
-                sizeMB: 65,
-                likes: 92000,
-                comments: [{ user: "StudyBuddy", text: "Best music for coding!" }]
-            },
-            {
-                id: "4xDzrJKXOOY",
-                title: "synthwave radio 🌌 - beats to chill/game to",
-                channel: "Lofi Girl",
-                views: "18K watching",
-                category: "Music",
-                type: "music",
-                sizeMB: 72,
-                likes: 41000,
-                comments: [{ user: "NightOwl", text: "Cyberpunk vibes!" }]
-            }
-        ];
-
-        let currentTab = 'home';
-        let activeVideo = null;
-        let likedSet = new Set();
-        let downloadedVideos = JSON.parse(localStorage.getItem('liquid_downloads') || '[]');
-        let watchHistory = JSON.parse(localStorage.getItem('liquid_history') || '[]');
-        let playbackSpeeds = [1, 1.25, 1.5, 2, 0.5, 0.25, 3, 4];
-        let speedIndex = 0;
-        let isAudioOnly = false;
-        let sleepTimeout = null;
-
-        let dlInterval = null;
-        let dlProgress = 0;
-        let isDlPaused = false;
-
-        let gyroEnabled = true;
-        let targetTiltX = 0;
-        let currentTiltX = 0;
-        let wavePhase = 0;
-        let activeTabIndex = 0;
-        let currentLiquidX = 0.125;
-
-        const canvas = document.getElementById('liquidNavCanvas');
-        const ctx = canvas.getContext('2d');
-
-        function resizeCanvas() {
-            const rect = canvas.parentElement.getBoundingClientRect();
-            canvas.width = rect.width * window.devicePixelRatio;
-            canvas.height = rect.height * window.devicePixelRatio;
-            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        window.addEventListener('deviceorientation', (e) => {
-            if (!gyroEnabled) return;
-            if (e.gamma !== null) {
-                targetTiltX = Math.max(-1, Math.min(1, e.gamma / 35));
-            }
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (!gyroEnabled) return;
-            const norm = (e.clientX / window.innerWidth) * 2 - 1;
-            targetTiltX = norm * 0.65;
-        });
-
-        function toggleGyro() {
-            gyroEnabled = !gyroEnabled;
-            const headerBtn = document.getElementById('headerGyroBtn');
-            const dot = document.getElementById('gyroDot');
-            const txt = document.getElementById('gyroStatusText');
-            const modalBtn = document.getElementById('modalGyroBtn');
-
-            if (gyroEnabled) {
-                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    DeviceOrientationEvent.requestPermission().catch(() => {});
-                }
-                headerBtn.className = "px-2.5 py-1.5 rounded-full text-xs font-semibold border border-white/15 flex items-center gap-1.5 transition bg-emerald-500/20 text-emerald-300";
-                dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
-                txt.innerText = "Gyro ON";
-                modalBtn.innerText = "ON";
-                modalBtn.className = "px-4 py-1.5 rounded-full text-xs font-bold bg-emerald-500 text-slate-950";
-            } else {
-                targetTiltX = 0;
-                headerBtn.className = "px-2.5 py-1.5 rounded-full text-xs font-semibold border border-white/15 flex items-center gap-1.5 transition bg-white/5 text-slate-400";
-                dot.className = "w-2 h-2 rounded-full bg-slate-500";
-                txt.innerText = "Gyro OFF";
-                modalBtn.innerText = "OFF";
-                modalBtn.className = "px-4 py-1.5 rounded-full text-xs font-bold bg-white/15 text-slate-300";
-            }
-        }
-
-        function animateLiquidNav() {
-            const w = canvas.parentElement.offsetWidth;
-            const h = canvas.parentElement.offsetHeight;
-            ctx.clearRect(0, 0, w, h);
-
-            const effectiveTarget = gyroEnabled ? targetTiltX : 0;
-            currentTiltX += (effectiveTarget - currentTiltX) * 0.08;
-
-            const targetCenter = (activeTabIndex + 0.5) / 4;
-            currentLiquidX += (targetCenter - currentLiquidX) * 0.12;
-
-            wavePhase += gyroEnabled ? 0.07 : 0.02;
-
-            const accentColor = getComputedStyle(document.body).getPropertyValue('--accent').trim() || '#ef4444';
-
-            ctx.save();
-            ctx.beginPath();
-            const baseWaterLevel = h * 0.52;
-            const tiltSlope = currentTiltX * 26;
-
-            ctx.moveTo(0, h);
-            for (let x = 0; x <= w; x += 6) {
-                const normX = (x / w) - 0.5;
-                const wave = gyroEnabled ? Math.sin(x * 0.035 + wavePhase) * 4.5 + Math.cos(x * 0.02 - wavePhase) * 2.5 : 0;
-                const y = baseWaterLevel + (normX * tiltSlope) + wave;
-                ctx.lineTo(x, y);
-            }
-            ctx.lineTo(w, h);
-            ctx.closePath();
-
-            const waterGrad = ctx.createLinearGradient(0, 0, w, h);
-            waterGrad.addColorStop(0, accentColor + '55');
-            waterGrad.addColorStop(0.5, accentColor + '88');
-            waterGrad.addColorStop(1, '#3b82f666');
-            ctx.fillStyle = waterGrad;
-            ctx.fill();
-
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-            ctx.restore();
-
-            const pillX = currentLiquidX * w + (currentTiltX * 12);
-            const pillY = h / 2;
-            const pillRadiusX = 42 + Math.abs(currentTiltX) * 6;
-            const pillRadiusY = 24;
-
-            ctx.save();
-            ctx.beginPath();
-            ctx.ellipse(pillX, pillY, pillRadiusX, pillRadiusY, currentTiltX * 0.15, 0, Math.PI * 2);
-            ctx.fillStyle = accentColor + 'aa';
-            ctx.shadowColor = accentColor;
-            ctx.shadowBlur = 18;
-            ctx.fill();
-            ctx.restore();
-
-            requestAnimationFrame(animateLiquidNav);
-        }
-        animateLiquidNav();
-
-        function switchTab(tab) {
-            currentTab = tab;
-            const tabs = ['home', 'short', 'library', 'music'];
-            activeTabIndex = tabs.indexOf(tab);
-
-            tabs.forEach(t => {
-                document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
-            });
-
-            document.getElementById('categoryChips').style.display = tab === 'home' ? 'flex' : 'none';
-            document.getElementById('storageBadge').classList.toggle('hidden', tab !== 'library');
-
-            if (tab === 'home') {
-                document.getElementById('feedHeading').innerText = 'সাজেস্টেড ও ট্রেন্ডিং ভিডিও';
-                if (getYouTubeApiKey()) loadYouTubeHome();
-                else renderFeed(catalog.filter(v => v.type === 'video' || v.type === 'music'));
-            } else if (tab === 'short') {
-                document.getElementById('feedHeading').innerText = '⚡ শর্টস (Shorts)';
-                renderShorts(catalog.filter(v => v.type === 'short'));
-            } else if (tab === 'library') {
-                renderLibrary();
-            } else if (tab === 'music') {
-                document.getElementById('feedHeading').innerText = '🎵 মিউজিক ও অডিও স্ট্রিম';
-                renderFeed(catalog.filter(v => v.type === 'music' || v.category === 'Music'));
-            }
-        }
-
-        function filterCategory(cat, btn) {
-            document.querySelectorAll('.chip-btn').forEach(b => {
-                b.className = "chip-btn px-3.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-slate-200 hover:bg-white/20 flex-shrink-0";
-            });
-            btn.className = "chip-btn active px-3.5 py-1 rounded-full text-xs font-semibold bg-white text-slate-900 flex-shrink-0";
-
-            if (getYouTubeApiKey()) {
-                const query = cat === 'All' ? 'animation' : cat;
-                document.getElementById('feedHeading').innerText = `${cat} — YouTube`;
-                document.getElementById('mainFeed').innerHTML = '<p class="text-center text-sm text-slate-300 py-8">ভিডিও খোঁজা হচ্ছে…</p>';
-                searchYouTube(query).then(renderFeed).catch(err => { document.getElementById('mainFeed').innerHTML = `<p class="text-sm text-rose-300 p-4">${escapeHtml(err.message)}</p>`; });
-            } else if (cat === 'All') { renderFeed(catalog.filter(v => v.type !== 'short')); }
-            else { renderFeed(catalog.filter(v => v.category === cat)); }
-        }
-
-        async function handleSearch() {
-            const q = document.getElementById('searchInput').value.trim();
-            if (!q) return;
-            switchTab('home');
-            document.getElementById('feedHeading').innerText = `"${q}" এর সার্চ রেজাল্ট`;
-            const container = document.getElementById('mainFeed');
-            container.innerHTML = '<p class="text-center text-sm text-slate-300 py-10">YouTube-এ খোঁজা হচ্ছে…</p>';
-            if (getYouTubeApiKey()) {
-                try {
-                    const results = await searchYouTube(q);
-                    renderFeed(results);
-                    document.getElementById('feedHeading').innerText = `"${q}" — YouTube সার্চ`;
-                    if (!results.length) container.innerHTML = '<p class="text-center text-sm text-slate-400 py-10">কোনো ভিডিও পাওয়া যায়নি। অন্য শব্দ দিয়ে চেষ্টা করুন।</p>';
-                } catch (error) { container.innerHTML = `<p class="text-center text-sm text-rose-300 py-10">${escapeHtml(error.message)}</p>`; }
-                return;
-            }
-            const matches = catalog.filter(v => (v.title || '').toLowerCase().includes(q.toLowerCase()) || (v.channel || '').toLowerCase().includes(q.toLowerCase()) || (v.category || '').toLowerCase().includes(q.toLowerCase()));
-            renderFeed(matches);
-            if (!matches.length) container.innerHTML = '<div class="glass-panel rounded-2xl p-5 text-center"><p class="font-semibold">YouTube API Key যোগ করা হয়নি</p><p class="text-xs text-slate-400 mt-2">Settings খুলে YouTube API Key সেভ করলে আসল YouTube সার্চ কাজ করবে।</p><button onclick="openSettings()" class="mt-3 rounded-full bg-red-500 px-4 py-2 text-xs font-bold">Settings খুলুন</button></div>';
-        }
-
-        function getYouTubeApiKey() { return (localStorage.getItem('liquid_youtube_api_key') || '').trim(); }
-        function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
-
-        async function youtubeRequest(endpoint, params = {}) {
-            const key = getYouTubeApiKey();
-            if (!key) throw new Error('আগে Settings থেকে YouTube API Key সেভ করুন।');
-            const url = new URL(`https://www.googleapis.com/youtube/v3/${endpoint}`);
-            Object.entries({...params, key}).forEach(([k, v]) => url.searchParams.set(k, v));
-            const response = await fetch(url.toString());
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                const reason = data?.error?.errors?.[0]?.reason;
-                if (response.status === 403 && (reason === 'quotaExceeded' || reason === 'dailyLimitExceeded')) throw new Error('আজকের YouTube API কোটা শেষ। Google Cloud Console-এ কোটা রিসেট হওয়া পর্যন্ত অপেক্ষা করুন।');
-                throw new Error(data?.error?.message || `YouTube API error (${response.status})`);
-            }
-            return data;
-        }
-
-        async function searchYouTube(query) {
-            const found = await youtubeRequest('search', {part:'snippet', type:'video', maxResults:'18', q:query, order:'relevance', safeSearch:'moderate'});
-            const ids = (found.items || []).map(item => item.id?.videoId).filter(Boolean);
-            if (!ids.length) return [];
-            const details = await youtubeRequest('videos', {part:'snippet,statistics,contentDetails', id:ids.join(',')});
-            return (details.items || []).map(item => ({id:item.id, title:item.snippet?.title || 'Untitled video', channel:item.snippet?.channelTitle || 'Unknown channel', views:`${Number(item.statistics?.viewCount || 0).toLocaleString()} views`, category:'YouTube', type:'video', sizeMB:'', likes:Number(item.statistics?.likeCount || 0), comments:[], thumbnail:item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.medium?.url || `https://img.youtube.com/vi/${item.id}/hqdefault.jpg`, publishedAt:item.snippet?.publishedAt || ''}));
-        }
-
-        async function loadYouTubeHome() {
-            if (!getYouTubeApiKey()) return;
-            const container = document.getElementById('mainFeed');
-            container.innerHTML = '<p class="text-center text-sm text-slate-300 py-8">YouTube থেকে ভিডিও আনা হচ্ছে…</p>';
-            try { const videos = await searchYouTube('animation movie explain'); renderFeed(videos); document.getElementById('feedHeading').innerText = 'YouTube থেকে পাওয়া ভিডিও'; }
-            catch (error) { container.innerHTML = `<div class="glass-panel rounded-2xl p-4 text-sm text-rose-300">${escapeHtml(error.message)}</div>`; }
-        }
-
-        function saveYouTubeApiKey() {
-            const input = document.getElementById('youtubeApiKeyInput'); const key = input.value.trim();
-            if (!key) return setApiKeyStatus('API Key লিখুন।', true);
-            if (!/^AIza[0-9A-Za-z_-]{20,}$/.test(key)) return setApiKeyStatus('Key-এর ফরম্যাট ঠিক মনে হচ্ছে না। Google Cloud থেকে কপি করুন।', true);
-            localStorage.setItem('liquid_youtube_api_key', key); input.value = ''; setApiKeyStatus('API Key এই ডিভাইসে সেভ হয়েছে। এখন API পরীক্ষা করুন।');
-        }
-        function toggleApiKeyVisibility() { const input=document.getElementById('youtubeApiKeyInput'); const button=document.getElementById('apiKeyEyeBtn'); input.type=input.type==='password'?'text':'password'; button.innerText=input.type==='password'?'দেখুন':'লুকান'; }
-        function setApiKeyStatus(message, isError=false) { const el=document.getElementById('apiKeyStatus'); el.innerText=message; el.className=`text-xs ${isError?'text-rose-300':'text-emerald-300'}`; }
-        async function testYouTubeApiKey() { setApiKeyStatus('API পরীক্ষা করা হচ্ছে…'); try { await youtubeRequest('videos',{part:'snippet',id:'dQw4w9WgXcQ'}); setApiKeyStatus('সফল! YouTube API সংযোগ কাজ করছে।'); } catch(error) { setApiKeyStatus(error.message,true); } }
-        function removeYouTubeApiKey() { localStorage.removeItem('liquid_youtube_api_key'); document.getElementById('youtubeApiKeyInput').value=''; setApiKeyStatus('এই ডিভাইস থেকে API Key মুছে ফেলা হয়েছে।'); }
-
-        function renderFeed(list) {
-            const container = document.getElementById('mainFeed');
-            container.innerHTML = '';
-
-            list.forEach(video => {
-                const thumb = video.thumbnail || `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`;
-                const isSaved = downloadedVideos.some(d => d.id === video.id);
-
-                const card = document.createElement('div');
-                card.className = "glass-panel rounded-2xl overflow-hidden transition hover:border-white/25 cursor-pointer group";
-                card.onclick = () => openWatchPage(video);
-
-                card.innerHTML = `
-                    <div class="relative w-full aspect-video bg-slate-900 overflow-hidden">
-                        <img src="${thumb}" alt="${video.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
-                        ${video.sizeMB ? `<span class="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded bg-black/80 text-[11px] font-semibold">${video.sizeMB} MB</span>` : ''}
-                        ${isSaved ? '<span class="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-emerald-500/90 text-slate-950 text-[10px] font-bold">✓ Downloaded</span>' : ''}
-                    </div>
-                    <div class="p-3.5 flex gap-3 items-start">
-                        <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 text-white" style="background: var(--accent);">
-                            ${escapeHtml((video.channel || '?').charAt(0))}
-                        </div>
-                        <div class="flex-grow">
-                            <h3 class="text-sm font-bold text-slate-100 line-clamp-2 leading-snug">${escapeHtml(video.title)}</h3>
-                            <p class="text-xs text-slate-400 mt-1">${escapeHtml(video.channel)} • ${escapeHtml(video.views)}</p>
-                        </div>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        function renderShorts(shortsList) {
-            const container = document.getElementById('mainFeed');
-            container.innerHTML = `<div class="grid grid-cols-2 gap-3" id="shortsGrid"></div>`;
-            const grid = document.getElementById('shortsGrid');
-
-            shortsList.forEach(short => {
-                const thumb = short.thumbnail || `https://img.youtube.com/vi/${short.id}/hqdefault.jpg`;
-                const el = document.createElement('div');
-                el.className = "glass-panel rounded-2xl overflow-hidden relative aspect-[9/16] cursor-pointer group";
-                el.onclick = () => openWatchPage(short);
-
-                el.innerHTML = `
-                    <img src="${thumb}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-3">
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-600 w-fit mb-1.5">⚡ Short</span>
-                        <p class="text-xs font-bold line-clamp-2">${escapeHtml(short.title)}</p>
-                        <p class="text-[10px] text-slate-300 mt-1">${escapeHtml(short.views)}</p>
-                    </div>
-                `;
-                grid.appendChild(el);
-            });
-        }
-
-        function renderLibrary() {
-            document.getElementById('feedHeading').innerText = '📥 ডাউনলোড করা ভিডিও (Phone Storage)';
-            const totalMB = downloadedVideos.reduce((acc, item) => acc + (item.sizeMB || 120), 0);
-            document.getElementById('storageBadge').innerText = `Phone Storage Used: ${totalMB} MB`;
-
-            const container = document.getElementById('mainFeed');
-            if (downloadedVideos.length === 0) {
-                container.innerHTML = `
-                    <div class="glass-panel rounded-2xl p-8 text-center space-y-2">
-                        <p class="text-2xl">📂</p>
-                        <p class="text-sm font-bold">আপনার ফোনের স্টোরেজে এখনো কোনো ভিডিও ডাউনলোড করা নেই</p>
-                        <p class="text-xs text-slate-400">যেকোনো ভিডিও প্লে করে "ডাউনলোড (Phone Storage)" বাটনে চাপলে সেটি এখানে সেভ হবে।</p>
-                    </div>
-                `;
-                return;
-            }
-            renderFeed(downloadedVideos);
-        }
-
-        function openWatchPage(video) {
-            activeVideo = video;
-            document.getElementById('miniPlayer').classList.add('hidden');
-            const modal = document.getElementById('watchModal');
-            const iframe = document.getElementById('mainPlayerIframe');
-
-            iframe.src = `https://www.youtube.com/embed/${video.id}?autoplay=1&rel=0`;
-            document.getElementById('watchTitle').innerText = video.title;
-            document.getElementById('watchChannel').innerText = video.channel;
-            document.getElementById('watchViews').innerText = video.views;
-            document.getElementById('likeCount').innerText = video.likes.toLocaleString();
-
-            const isDownloaded = downloadedVideos.some(d => d.id === video.id);
-            document.getElementById('downloadBtnText').innerText = isDownloaded ? `Saved in Storage (${video.sizeMB} MB)` : `ডাউনলোড (${video.sizeMB} MB)`;
-
-            renderComments();
-            renderSuggested(video.id);
-
-            if (!watchHistory.some(h => h.id === video.id)) {
-                watchHistory.unshift(video);
-                localStorage.setItem('liquid_history', JSON.stringify(watchHistory.slice(0, 20)));
-            }
-
-            modal.classList.remove('hidden');
-        }
-
-        function closeWatchModal() {
-            document.getElementById('mainPlayerIframe').src = '';
-            document.getElementById('watchModal').classList.add('hidden');
-            clearInterval(dlInterval);
-        }
-
-        function minimizeToMiniPlayer() {
-            if (!activeVideo) return;
-            document.getElementById('watchModal').classList.add('hidden');
-            const mini = document.getElementById('miniPlayer');
-            document.getElementById('miniThumb').src = `https://img.youtube.com/vi/${activeVideo.id}/hqdefault.jpg`;
-            document.getElementById('miniTitle').innerText = activeVideo.title;
-            mini.classList.remove('hidden');
-        }
-
-        function restoreFromMiniPlayer() {
-            document.getElementById('miniPlayer').classList.add('hidden');
-            document.getElementById('watchModal').classList.remove('hidden');
-        }
-
-        function closeMiniPlayer() {
-            document.getElementById('mainPlayerIframe').src = '';
-            document.getElementById('miniPlayer').classList.add('hidden');
-        }
-
-        function toggleLike() {
-            if (!activeVideo) return;
-            if (likedSet.has(activeVideo.id)) {
-                likedSet.delete(activeVideo.id);
-                activeVideo.likes--;
-            } else {
-                likedSet.add(activeVideo.id);
-                activeVideo.likes++;
-            }
-            document.getElementById('likeCount').innerText = activeVideo.likes.toLocaleString();
-        }
-
-        function renderComments() {
-            const list = document.getElementById('commentsList');
-            const comments = activeVideo.comments || [];
-            document.getElementById('commentCount').innerText = comments.length;
-            list.innerHTML = '';
-
-            comments.forEach(c => {
-                const item = document.createElement('div');
-                item.className = "bg-white/5 p-2.5 rounded-xl text-xs";
-                item.innerHTML = `<span class="font-bold text-slate-200">${c.user}:</span> <span class="text-slate-300">${c.text}</span>`;
-                list.appendChild(item);
-            });
-        }
-
-        function postComment() {
-            const input = document.getElementById('newCommentInput');
-            const txt = input.value.trim();
-            if (!txt || !activeVideo) return;
-
-            activeVideo.comments.unshift({ user: "Fardin Khan", text: txt });
-            input.value = '';
-            renderComments();
-        }
-
-        function renderSuggested(currentId) {
-            const container = document.getElementById('suggestedList');
-            container.innerHTML = '';
-            const others = catalog.filter(v => v.id !== currentId).slice(0, 5);
-
-            others.forEach(v => {
-                const thumb = `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`;
-                const row = document.createElement('div');
-                row.className = "glass-panel p-2.5 rounded-xl flex gap-3 items-center cursor-pointer hover:bg-white/10";
-                row.onclick = () => openWatchPage(v);
-
-                row.innerHTML = `
-                    <img src="${thumb}" class="w-28 h-16 rounded-lg object-cover flex-shrink-0">
-                    <div class="overflow-hidden">
-                        <p class="text-xs font-bold line-clamp-2">${v.title}</p>
-                        <p class="text-[11px] text-slate-400 mt-1">${v.channel}</p>
-                    </div>
-                `;
-                container.appendChild(row);
-            });
-        }
-
-        function startStorageDownload() {
-            if (!activeVideo) return;
-            if (downloadedVideos.some(d => d.id === activeVideo.id)) {
-                alert("এই ভিডিওটি ইতিমধ্যেই আপনার ফোনের স্টোরেজে ডাউনলোড করা আছে!");
-                return;
-            }
-
-            if (window.Android && typeof window.Android.downloadVideo === 'function') {
-                window.Android.downloadVideo(activeVideo.id, activeVideo.title);
-            }
-
-            const box = document.getElementById('downloadProgressBox');
-            box.classList.remove('hidden');
-            dlProgress = 0;
-            isDlPaused = false;
-
-            clearInterval(dlInterval);
-            dlInterval = setInterval(() => {
-                if (isDlPaused) return;
-                dlProgress += Math.floor(Math.random() * 14) + 6;
-                if (dlProgress >= 100) {
-                    dlProgress = 100;
-                    clearInterval(dlInterval);
-                    document.getElementById('dlStatusLabel').innerText = `✓ সম্পন্ন (${activeVideo.sizeMB} MB Phone Storage-এ সেভ হয়েছে)`;
-                    document.getElementById('downloadBtnText').innerText = `Saved in Storage (${activeVideo.sizeMB} MB)`;
-
-                    downloadedVideos.unshift(activeVideo);
-                    localStorage.setItem('liquid_downloads', JSON.stringify(downloadedVideos));
-                }
-                document.getElementById('dlPercent').innerText = `${dlProgress}%`;
-                document.getElementById('dlBar').style.width = `${dlProgress}%`;
-            }, 350);
-        }
-
-        function pauseResumeDownload() {
-            isDlPaused = !isDlPaused;
-            document.getElementById('pauseDlBtn').innerText = isDlPaused ? 'Resume' : 'Pause';
-            document.getElementById('dlStatusLabel').innerText = isDlPaused ? 'ডাউনলোড পজ (Paused) করা হয়েছে' : 'ফোন স্টোরেজে ডাউনলোড হচ্ছে...';
-        }
-
-        function cancelDownload() {
-            clearInterval(dlInterval);
-            document.getElementById('downloadProgressBox').classList.add('hidden');
-        }
-
-        function toggleAudioOnly() {
-            isAudioOnly = !isAudioOnly;
-            document.getElementById('audioOnlyOverlay').classList.toggle('hidden', !isAudioOnly);
-        }
-
-        function cycleSpeed() {
-            speedIndex = (speedIndex + 1) % playbackSpeeds.length;
-            document.getElementById('speedBtn').innerText = `⚡ Speed: ${playbackSpeeds[speedIndex]}x`;
-        }
-
-        function setSleepTimer() {
-            clearTimeout(sleepTimeout);
-            const mins = prompt("কত মিনিট পর ভিডিও অটোমেটিক বন্ধ হবে? (যেমন: 15, 30, 60)", "30");
-            if (!mins || isNaN(mins)) return;
-            document.getElementById('sleepTimerDisplay').innerText = `⏰ Sleep: ${mins}m`;
-            sleepTimeout = setTimeout(() => {
-                closeWatchModal();
-                alert("Sleep Timer শেষ হওয়ায় ভিডিও বন্ধ করা হয়েছে।");
-            }, parseInt(mins) * 60000);
-        }
-
-        function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); setApiKeyStatus(getYouTubeApiKey() ? 'এই ডিভাইসে একটি API Key সেভ করা আছে।' : 'এখনো API Key যোগ করা হয়নি।'); }
-        function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
-        function setTheme(themeName) { document.body.setAttribute('data-theme', themeName); }
-        function updateBlur(val) {
-            document.documentElement.style.setProperty('--blur-val', val + 'px');
-            document.getElementById('blurValText').innerText = val + 'px';
-        }
-
-        switchTab('home');
-    </script>
-</body>
-</html>
+<!DOCTYPE html><html lang="bn"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0b0b12"><title>LiquidTube</title>
+<style>
+:root{--bg:#0b0b12;--cd:#171722;--ln:rgba(255,255,255,.09);--tx:#f5f5fa;--mu:#9b9bb0;--ac:#ff2d55;--g:linear-gradient(135deg,#ff2d55,#8b5cf6)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--tx);font:500 14px/1.35 system-ui,-apple-system,'Hind Siliguri',sans-serif;overflow:hidden}
+button,input{font:inherit;color:inherit;background:none;border:0;outline:0}
+#app{height:100%;display:flex;flex-direction:column}
+#vs{flex:1;position:relative;min-height:0}
+.v{position:absolute;inset:0;display:none;flex-direction:column}.v.on{display:flex}
+.sc{flex:1;overflow-y:auto;overscroll-behavior:contain;padding-bottom:12px}
+header{display:flex;align-items:center;gap:10px;padding:calc(14px + env(safe-area-inset-top)) 16px 4px}
+.lg{width:32px;height:32px;border-radius:10px;background:var(--g);display:grid;place-items:center;box-shadow:0 4px 18px rgba(255,45,85,.45)}
+.lg:after{content:'';border-left:11px solid #fff;border-top:7px solid transparent;border-bottom:7px solid transparent;margin-left:3px}
+h1{font-size:21px;font-weight:800;letter-spacing:-.6px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 16px 12px;scrollbar-width:none;flex:none}.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;padding:8px 16px;border-radius:99px;background:rgba(255,255,255,.07);border:1px solid var(--ln);backdrop-filter:blur(12px)}
+.chips button.on{background:var(--g);border-color:transparent;font-weight:700}
+#ptr{height:0;overflow:hidden;display:grid;place-items:center;color:var(--mu);font-size:12.5px;transition:height .2s}
+.cd{display:block;margin-bottom:22px}
+.th{position:relative;aspect-ratio:16/9;background:var(--cd);overflow:hidden;margin:0 12px;border-radius:18px}
+.th img{width:100%;height:100%;object-fit:cover;display:block}
+.th b{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.78);padding:2px 7px;border-radius:7px;font-size:12px}
+.mt{display:flex;gap:12px;padding:10px 16px 0}
+.av{flex:none;width:38px;height:38px;border-radius:50%;background:var(--g);display:grid;place-items:center;font-style:normal;font-weight:800}
+.mt h3{font-size:15px;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mt p{color:var(--mu);font-size:12.5px;margin-top:3px}
+.sk{aspect-ratio:16/9;margin:0 12px 70px;border-radius:18px;background:linear-gradient(90deg,#171722,#242436,#171722);background-size:200%;animation:sh 1.2s infinite}
+@keyframes sh{to{background-position:-200%}}
+.em{text-align:center;color:var(--mu);padding:60px 28px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.pill{padding:9px 18px;border-radius:99px;background:var(--g);font-weight:700;color:#fff}
+nav{display:flex;background:rgba(14,14,22,.82);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid var(--ln);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;padding:10px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--mu)}
+nav button.on{color:var(--ac)}
+svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sb{margin:calc(14px + env(safe-area-inset-top)) 16px 0;display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.07);border:1px solid var(--ln);border-radius:18px;padding:0 16px;flex:none;color:var(--mu)}
+.sb input{flex:1;height:48px;color:var(--tx)}
+.seg{display:flex;gap:8px;padding:calc(16px + env(safe-area-inset-top)) 16px 8px;flex:none}
+.seg button{padding:8px 18px;border-radius:99px;background:rgba(255,255,255,.07)}.seg .on{background:var(--g);font-weight:700}
+#sh.on{display:block;overflow-y:auto;scroll-snap-type:y mandatory;background:#000;scrollbar-width:none}
+.s{height:100%;scroll-snap-align:start;scroll-snap-stop:always;position:relative;background:#000 center/cover}
+.s iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.ov{position:absolute;inset:0;z-index:2}
+.inf{position:absolute;left:0;right:70px;bottom:0;padding:70px 16px 20px;background:linear-gradient(transparent,rgba(0,0,0,.85));z-index:3;pointer-events:none}
+.inf p{margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.s .fv{position:absolute;right:12px;bottom:100px;z-index:3;width:48px;height:48px;border-radius:50%;background:rgba(0,0,0,.45);backdrop-filter:blur(8px);display:grid;place-items:center}
+.fv.on{color:var(--ac)}.fv.on svg{fill:currentColor}
+#pl{position:fixed;inset:0;z-index:20;background:var(--bg);display:none;overflow-y:auto}#pl.on{display:block}
+.stk{position:sticky;top:0;z-index:3;background:var(--bg)}
+.bar{display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top)) 12px 8px}
+.bar button{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.08);display:grid;place-items:center}
+#pv{aspect-ratio:16/9;background:#000;position:relative}#pv iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+#pi{padding:14px 16px}#pi h2{font-size:18px;line-height:1.35}.mu{color:var(--mu);margin-top:4px;font-size:13px}
+.row{display:flex;align-items:center;gap:12px;margin-top:14px}.row b{flex:1}
+.row .fv{padding:9px 16px;border-radius:99px;background:rgba(255,255,255,.1)}
+.nx{padding:4px 16px 12px;font-weight:700;font-size:16px}
+</style></head><body><div id="app"><div id="vs">
+<div class="v on" id="hm"><header><i class="lg"></i><h1>LiquidTube</h1></header><div class="chips" id="ch"></div>
+<div class="sc" id="hs"><div id="ptr">↓ টেনে রিফ্রেশ করুন</div><div id="fd"></div><div class="sn"></div></div></div>
+<div class="v" id="sh"></div>
+<div class="v" id="sr"><div class="sb"><svg width="20" height="20" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg><input id="q" placeholder="ভিডিও খুঁজুন" enterkeyhint="search"></div>
+<div class="chips" id="rc"></div><div class="sc"><div id="sf"></div><div class="sn"></div></div></div>
+<div class="v" id="lb"><div class="seg"><button data-t="lt_h" class="on">ইতিহাস</button><button data-t="lt_f">পছন্দের</button></div><div class="sc"><div id="ll"></div></div></div>
+</div>
+<nav>
+<button class="on" data-n="hm"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg>হোম</button>
+<button data-n="sh"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 9l5 3-5 3z"/></svg>শর্টস</button>
+<button data-n="sr"><svg width="24" height="24" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg>সার্চ</button>
+<button data-n="lb"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>লাইব্রেরি</button>
+</nav></div>
+<div id="pl"><div class="stk"><div class="bar"><button id="cb"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><b>এখন চলছে</b></div><div id="pv"></div></div><div id="pi"></div><div class="nx">পরের ভিডিও</div><div id="pn"></div></div>
+<script>
+const KEY='__YT_API_KEY__',$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],M={};
+const LS=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))||d}catch{return d}},SV=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dur=s=>{const h=s/3600|0,m=s%3600/60|0,x=String(s%60).padStart(2,'0');return h?`${h}:${String(m).padStart(2,'0')}:${x}`:`${m}:${x}`};
+const sec=d=>{const m=/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(d)||[];return(m[1]|0)*3600+(m[2]|0)*60+(m[3]|0)};
+const nf=n=>{const f=x=>+x.toFixed(1)+'';return n>=1e7?f(n/1e7)+' কোটি':n>=1e5?f(n/1e5)+' লাখ':n>=1e3?f(n/1e3)+' হাজার':n+''};
+const ago=d=>{const s=(Date.now()-new Date(d))/864e5;return s<1?'আজ':s<30?(s|0)+' দিন আগে':s<365?(s/30|0)+' মাস আগে':(s/365|0)+' বছর আগে'};
+const SK='<div class="sk"></div>'.repeat(3);
+const err=e=>`<div class="em"><p>${e.message=='KEY'?'অ্যাপের সেটআপ সম্পূর্ণ হয়নি: API Key যুক্ত নেই।':e.message=='quotaExceeded'?'আজকের লোডের সীমা শেষ। কাল আবার চেষ্টা করুন।':'লোড করা যায়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।'}</p><button class="pill" onclick="location.reload()">আবার চেষ্টা</button></div>`;
+async function api(ep,p){if(KEY[0]=='_')throw Error('KEY');const u=new URL('https://www.googleapis.com/youtube/v3/'+ep);u.search=new URLSearchParams({...p,key:KEY});const r=await fetch(u),d=await r.json();if(!r.ok)throw Error(d.error?.errors?.[0]?.reason||'net');return d}
+const P='snippet,statistics,contentDetails,status';
+const V=i=>{const v={id:i.id,t:i.snippet.title,ch:i.snippet.channelTitle,v:+i.statistics?.viewCount||0,sec:sec(i.contentDetails.duration),pub:i.snippet.publishedAt,emb:i.status?.embeddable!==false};M[v.id]=v;return v};
+const det=async ids=>ids.length?(await api('videos',{part:P,id:ids.join(',')})).items.map(V).filter(v=>v.emb):[];
+const card=v=>`<article class="cd" data-id="${v.id}"><div class="th"><img loading="lazy" src="https://i.ytimg.com/vi/${v.id}/hqdefault.jpg" alt=""><b>${dur(v.sec)}</b></div><div class="mt"><i class="av">${esc([...v.ch][0]||'?')}</i><div><h3>${esc(v.t)}</h3><p>${esc(v.ch)} • ${nf(v.v)} ভিউ • ${ago(v.pub)}</p></div></div></article>`;
+async function fill(b,fn,reset){if(b._k)return;b._k=1;b._fn=fn;if(reset){b._t='';b.innerHTML=SK}
+try{const r=await fn(b._t);b._t=r.next;if(reset)b.innerHTML='';b.insertAdjacentHTML('beforeend',r.items.map(card).join(''));if(!b.children.length)b.innerHTML='<p class="em">কিছু পাওয়া যায়নি</p>'}
+catch(e){b._t='';b.innerHTML=err(e)}b._k=0}
+const IOs=new IntersectionObserver(es=>es.forEach(e=>{const b=e.target.previousElementSibling;if(e.isIntersecting&&b._t)fill(b,b._fn)}),{rootMargin:'700px'});
+$$('.sn').forEach(s=>IOs.observe(s));
+/* হোম */
+const CATS=[['সব',''],['গান',10],['গেমিং',20],['বিনোদন',24],['কমেডি',23],['খবর',25],['প্রযুক্তি',28],['খেলাধুলা',17]];
+let cat='',reg='BD';const rnd=a=>a[Math.random()*a.length|0];
+const homeFn=async t=>{const p={part:P,chart:'mostPopular',maxResults:25,regionCode:reg};if(cat)p.videoCategoryId=cat;if(t)p.pageToken=t;
+let d;try{d=await api('videos',p)}catch(e){if(reg!='US'){reg='US';return homeFn(t)}throw e}
+const it=d.items.map(V).filter(v=>v.emb&&v.sec>60);if(!t)it.sort(()=>Math.random()-.5);return{items:it,next:d.nextPageToken}};
+$('#ch').innerHTML=CATS.map(([n,c],i)=>`<button data-c="${c}" class="${i?'':'on'}">${n}</button>`).join('');
+$('#ch').onclick=e=>{const b=e.target.closest('button');if(!b)return;$$('#ch button').forEach(x=>x.classList.toggle('on',x==b));cat=b.dataset.c;reg=rnd(['BD','BD','IN','US']);$('#hs').scrollTop=0;fill($('#fd'),homeFn,1)};
+const hs=$('#hs'),ptr=$('#ptr');let y0=null;
+hs.addEventListener('touchstart',e=>{y0=hs.scrollTop<=0?e.touches[0].clientY:null},{passive:true});
+hs.addEventListener('touchmove',e=>{if(y0==null)return;const d=e.touches[0].clientY-y0;if(d>0){ptr.style.transition='none';ptr.style.height=Math.min(d/2.2,64)+'px';ptr.textContent=d>150?'ছেড়ে দিন':'↓ টেনে রিফ্রেশ করুন';ptr.dataset.go=d>150?1:''}},{passive:true});
+hs.addEventListener('touchend',async()=>{if(y0==null)return;y0=null;ptr.style.transition='';if(ptr.dataset.go){ptr.dataset.go='';ptr.style.height='44px';ptr.textContent='নতুন ভিডিও আনা হচ্ছে…';reg=rnd(['BD','BD','IN','US','GB']);await fill($('#fd'),homeFn,1)}ptr.style.height='0'});
+/* সার্চ */
+const srFn=q=>async t=>{const p={part:'snippet',type:'video',maxResults:20,q,videoEmbeddable:'true',regionCode:'BD'};if(t)p.pageToken=t;const d=await api('search',p);return{items:await det(d.items.map(i=>i.id.videoId)),next:d.nextPageToken}};
+const rcs=()=>{$('#rc').innerHTML=LS('lt_s',[]).map(s=>`<button>${esc(s)}</button>`).join('')};rcs();
+function search(q){q=q.trim();if(!q)return;$('#q').value=q;$('#q').blur();SV('lt_s',[q,...LS('lt_s',[]).filter(x=>x!=q)].slice(0,8));rcs();fill($('#sf'),srFn(q),1)}
+$('#q').onkeydown=e=>{if(e.key=='Enter')search(e.target.value)};
+$('#rc').onclick=e=>{if(e.target.tagName=='BUTTON')search(e.target.textContent)};
+/* শর্টস */
+const SQ=['#shorts','funny #shorts','music #shorts','বাংলা #shorts','cricket #shorts','gaming #shorts','cooking #shorts','travel #shorts','comedy #shorts','tech #shorts'];
+const HEART='<svg width="26" height="26" viewBox="0 0 24 24"><path d="M12 21s-8-5.3-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.7-8 11-8 11z"/></svg>';
+const emb=(id,o='')=>`https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0&enablejsapi=1&origin=${location.origin}${o}`;
+let shT='',shB=0,shQ='',shInit=0;
+const shCard=v=>`<section class="s" style="background-image:url(https://i.ytimg.com/vi/${v.id}/hqdefault.jpg)" data-v="${v.id}"><div class="ov"></div><div class="inf"><b>@${esc(v.ch)}</b><p>${esc(v.t)}</p></div><button class="fv" data-f="${v.id}">${HEART}</button></section>`;
+async function shMore(){if(shB)return;shB=1;const box=$('#sh');
+try{const p={part:'snippet',type:'video',videoDuration:'short',maxResults:25,videoEmbeddable:'true',q:shQ};if(shT)p.pageToken=shT;const d=await api('search',p);shT=d.nextPageToken||'';
+const it=(await det(d.items.map(i=>i.id.videoId))).filter(v=>v.sec<=61);if(!shInit)box.innerHTML='';shInit=1;box.insertAdjacentHTML('beforeend',it.map(shCard).join(''));
+$$('#sh .s:not([data-o])').forEach(e=>{e.dataset.o=1;io.observe(e)});mark()}
+catch(e){if(!shInit)box.innerHTML=err(e)}shB=0}
+const act=s=>{$$('#sh iframe').forEach(f=>f.remove());s._p=0;s.insertAdjacentHTML('afterbegin',`<iframe src="${emb(s.dataset.v,`&controls=0&loop=1&playlist=${s.dataset.v}&modestbranding=1`)}" allow="autoplay;encrypted-media;picture-in-picture" referrerpolicy="strict-origin-when-cross-origin"></iframe>`);hist(M[s.dataset.v])};
+const io=new IntersectionObserver(es=>es.forEach(e=>{const s=e.target;if(e.isIntersecting){act(s);const a=[...$('#sh').children];if(a.indexOf(s)>=a.length-4&&shT)shMore()}else s.querySelector('iframe')?.remove()}),{root:$('#sh'),threshold:.7});
+const tog=s=>{const f=s.querySelector('iframe');if(!f)return;s._p=!s._p;f.contentWindow.postMessage(JSON.stringify({event:'command',func:s._p?'pauseVideo':'playVideo',args:''}),'*')};
+/* প্লেয়ার */
+const hist=v=>{if(v)SV('lt_h',[v,...LS('lt_h',[]).filter(x=>x.id!=v.id)].slice(0,40))};
+function mark(){const s=new Set(LS('lt_f',[]).map(x=>x.id));$$('[data-f]').forEach(b=>b.classList.toggle('on',s.has(b.dataset.f)))}
+function tf(id){let a=LS('lt_f',[]);a=a.some(x=>x.id==id)?a.filter(x=>x.id!=id):[M[id],...a];SV('lt_f',a);mark();if($('#lb').classList.contains('on'))lib()}
+function play(id){const v=M[id];if(!v)return;$('#pl').classList.add('on');$('#pl').scrollTop=0;
+$('#pv').innerHTML=`<iframe src="${emb(id,'&modestbranding=1')}" allow="autoplay;fullscreen;picture-in-picture;encrypted-media" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+$('#pi').innerHTML=`<h2>${esc(v.t)}</h2><p class="mu">${nf(v.v)} ভিউ • ${ago(v.pub)}</p><div class="row"><i class="av">${esc([...v.ch][0]||'?')}</i><b>${esc(v.ch)}</b><button class="fv" data-f="${id}">♥ পছন্দ</button></div>`;
+$('#pn').innerHTML=Object.values(M).filter(x=>x.id!=id&&x.sec>60).sort(()=>Math.random()-.5).slice(0,14).map(card).join('');mark();hist(v);history.pushState({p:1},'')}
+function shut(){$('#pl').classList.remove('on');$('#pv').innerHTML=''}
+$('#cb').onclick=()=>history.back();addEventListener('popstate',shut);
+document.addEventListener('click',e=>{const f=e.target.closest('[data-f]');if(f){tf(f.dataset.f);return}const o=e.target.closest('.ov');if(o){tog(o.parentNode);return}const c=e.target.closest('[data-id]');if(c)play(c.dataset.id)});
+/* লাইব্রেরি */
+let lt='lt_h';function lib(){const a=LS(lt,[]);a.forEach(v=>M[v.id]=v);$('#ll').innerHTML=a.length?a.map(card).join(''):'<p class="em">এখানে এখনো কিছু নেই।<br>ভিডিও দেখলে বা ♥ দিলে এখানে জমা হবে।</p>'}
+$('.seg').onclick=e=>{const b=e.target.closest('button');if(!b)return;lt=b.dataset.t;$$('.seg button').forEach(x=>x.classList.toggle('on',x==b));lib()};
+/* নেভিগেশন */
+function go(n){$$('.v').forEach(e=>e.classList.toggle('on',e.id==n));$$('nav button').forEach(b=>b.classList.toggle('on',b.dataset.n==n));$$('#sh iframe').forEach(f=>f.remove());
+if(n=='sh'&&!shInit&&!shB){$('#sh').innerHTML=SK;shQ=rnd(SQ);shMore()}if(n=='lb')lib()}
+$$('nav button').forEach(b=>b.onclick=()=>go(b.dataset.n));
+fill($('#fd'),homeFn,1);
+</script></body></html>
