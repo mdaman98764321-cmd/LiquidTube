@@ -21,20 +21,27 @@ jobs:
           java-version: 17
 
       - name: Prepare web folder
+        env:
+          YT_API_KEY: ${{ secrets.YT_API_KEY }}
         run: |
-          mkdir -p www
+          mkdir -p www assets
           cp index.html www/
+          sed -i "s/__YT_API_KEY__/${YT_API_KEY}/" www/index.html
+          mv icon-only.png icon-foreground.png icon-background.png splash.png splash-dark.png assets/
 
       - name: Install dependencies
         run: npm install
 
       - name: Create Android project
-        run: |
-          npx cap add android
-          npx cap sync android
+        run: npx cap add android
 
-      - name: Build APK
+      - name: Generate icons and splash
+        continue-on-error: true
+        run: npx capacitor-assets generate --android
+
+      - name: Sync and build
         run: |
+          npx cap sync android
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
