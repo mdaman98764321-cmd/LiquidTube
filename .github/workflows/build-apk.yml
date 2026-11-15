@@ -24,9 +24,10 @@ jobs:
         env:
           YT_API_KEY: ${{ secrets.YT_API_KEY }}
         run: |
+          [ -n "$YT_API_KEY" ] || { echo "YT_API_KEY secret যোগ করা হয়নি"; exit 1; }
           mkdir -p www assets
           cp index.html www/
-          sed -i "s/__YT_API_KEY__/${YT_API_KEY}/" www/index.html
+          K=$(printf '%s' "$YT_API_KEY" | tr -d '[:space:]') node -e "const f='www/index.html',fs=require('fs');fs.writeFileSync(f,fs.readFileSync(f,'utf8').split('__YT_API_KEY__').join(process.env.K))"
           mv icon-only.png icon-foreground.png icon-background.png splash.png splash-dark.png assets/
 
       - name: Install dependencies
